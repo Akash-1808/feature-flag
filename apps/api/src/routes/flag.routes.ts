@@ -111,7 +111,7 @@ flagRouter.patch('/:id/environments/:envId/rules/:ruleId', async (req: Request, 
         const actorId = req.session?.user?.id || null;
         const { conditions, variation } = req.body;
 
-        const result = await flagService.updateTargetingRule(flagId, envId, ruleId, conditions, variation, actorId)
+        const result = await flagService.updateTargetingRule(flagId, envId, ruleId, orgId, conditions, variation, actorId)
 
         res.status(200).json({ rule: result })
     } catch (error) {
