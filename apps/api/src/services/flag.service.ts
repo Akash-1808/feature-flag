@@ -1,11 +1,11 @@
 import { pool } from '../db/pool.js';
-import { redis } from '../cache/redis.js';
 import { Flag, flagRepository, FlagType } from '../repositories/flag.repository.js';
 import { FlagState, flagStateRepository } from '../repositories/flag-state.repository.js';
 import { targetingRuleRepository, TargetingRule } from '../repositories/targeting-rule.repository.js';
 import { environmentRepository } from '../repositories/environment.repository.js';
 import { auditService } from './audit.service.js';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/errors.js';
+import { flagCache } from '../cache/flag-cache.js';
 
 function slugify(text: string): string {
   return text
@@ -91,10 +91,10 @@ export const flagService = {
       const states = await flagStateRepository.createStateForFlag(flag.id, envIds, client);
 
       // 4. Audit log inside transaction before commit
-      await auditService.log(orgId, actorId, 'CREATE_FLAG', 'flag', flag.id, null, { flag, states }, client);
+      await auditService.log(orgId, actorId, 'CREATE_FLAG', 'flag', flag.id, null, { flag, states }, null, client);
       await client.query('COMMIT');
       for (const envId of envIds) {
-        await redis.del(`ruleset:${envId}`);
+        await flagCache.invalidateRuleset(envId);
       }
 
       return { flag, states };
@@ -145,7 +145,7 @@ export const flagService = {
 
     await auditService.log(orgId, actorId, 'DELETE_FLAG', 'flag', deleted.id, deleted, null);
     for (const env of envs) {
-      await redis.del(`ruleset:${env.id}`);
+      await flagCache.invalidateRuleset(env.id);
     }
 
     return deleted;
@@ -186,7 +186,7 @@ export const flagService = {
     );
 
     // Invalidate the ruleset cache for this environment so SDKs get fresh evaluation immediately!
-    await redis.del(`ruleset:${envId}`);
+    await flagCache.invalidateRuleset(envId);
 
     return updated;
   },
@@ -195,18 +195,11 @@ export const flagService = {
    * SDK Hot-Path: Get evaluated ruleset payload for an environment (with Redis caching)
    */
   async getRulesetForEnvironment(envId: string): Promise<EnvironmentRulesetPayload> {
-    const cacheKey = `ruleset:${envId}`;
 
-    // 1. Check Redis cache first
-    try {
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        return JSON.parse(cached) as EnvironmentRulesetPayload;
-      }
-    } catch (cacheErr) {
-      console.warn('Redis cache read error during ruleset evaluation:', cacheErr);
+    const cached = await flagCache.getRuleset(envId);
+    if (cached) {
+      return cached;
     }
-
     // 2. Fetch all flag states for this environment
     const states = await flagStateRepository.findAllByEnvId(envId);
 
@@ -234,11 +227,7 @@ export const flagService = {
     };
 
     // 4. Store in Redis cache (TTL 60 seconds or until invalidated)
-    try {
-      await redis.set(cacheKey, JSON.stringify(payload), 'EX', 60);
-    } catch (cacheErr) {
-      console.warn('Redis cache write error during ruleset evaluation:', cacheErr);
-    }
+    await flagCache.setCachedRuleset(envId, payload);
 
     return payload;
   },
@@ -275,7 +264,7 @@ export const flagService = {
       rule
     )
 
-    await redis.del(`ruleset:${envId}`)
+    await flagCache.invalidateRuleset(envId);
 
     return rule;
   },
@@ -308,7 +297,7 @@ export const flagService = {
       rule
     )
 
-    await redis.del(`ruleset:${envId}`)
+    await flagCache.invalidateRuleset(envId);
 
     return rule;
   },
@@ -333,7 +322,7 @@ export const flagService = {
       rule
     )
 
-    await redis.del(`ruleset:${envId}`)
+    await flagCache.invalidateRuleset(envId);
 
     return rule;
   },
@@ -358,7 +347,7 @@ export const flagService = {
       ruleIds
     )
 
-    await redis.del(`ruleset:${envId}`)
+    await flagCache.invalidateRuleset(envId);
 
     return rules;
   }

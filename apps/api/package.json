@@ -6,9 +6,10 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "vitest run"
+    "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@feature-flag/sdk": "*",
     "better-auth": "^1.1.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -26,6 +27,7 @@
     "@types/node": "^20.14.9",
     "@types/pg": "^8.11.6",
     "@types/supertest": "^6.0.2",
+    "@vitest/coverage-v8": "^2.1.9",
     "supertest": "^7.0.0",
     "tsx": "^4.16.2",
     "typescript": "^5.5.2",

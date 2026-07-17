@@ -12,11 +12,14 @@
         "sourceMap": true,
         "baseUrl": ".",
         "paths": {
+            "@app/*": [
+                "./apps/*"
+            ],
             "@feature-flag/sdk": [
-                "./packages/sdk/src/index.ts"
+                "./packages/sdk/dist/index.d.ts"
             ],
             "@feature-flag/sdk/*": [
-                "./packages/sdk/src/*"
+                "./packages/sdk/dist/*"
             ]
         }
     }

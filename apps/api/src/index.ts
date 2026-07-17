@@ -10,6 +10,9 @@ import { config } from './config.js';
 import { errorHandler } from './middleware/error-handler.middleware.js';
 import environmentRouter from './routes/environment.routes.js';
 import flagRouter from './routes/flag.routes.js';
+import sdkRouter from './routes/sdk.routes.js';
+import apiKeyRouter from './routes/api-key.routes.js';
+import auditRouter from './routes/audit.routes.js';
 
 export const app = express();
 
@@ -26,6 +29,9 @@ app.use(express.json());
 
 app.use('/api/environments', environmentRouter);
 app.use('/api/flags', flagRouter);
+app.use('/api/api-keys', apiKeyRouter);
+app.use('/api/audit', auditRouter);
+app.use('/sdk', sdkRouter);
 
 // Health Check Endpoint
 app.get('/health', async (_req, res) => {

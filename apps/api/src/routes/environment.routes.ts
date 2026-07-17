@@ -1,6 +1,8 @@
 import { Request, Router, Response, NextFunction } from "express";
 import { requireActiveOrg, requireOrgRole, requireSession } from "../middleware/session.middleware";
 import { environmentService } from "../services/environment.service";
+import { validate } from "../middleware/validate.middleware.js";
+import { createEnvironmentSchema } from "../validators/schemas.js";
 
 const environmentRouter = Router();
 
@@ -19,7 +21,7 @@ environmentRouter.get('/', async (req: Request, res: Response, next: NextFunctio
     }
 })
 
-environmentRouter.post('/', requireOrgRole('admin', 'owner'), async (req: Request, res: Response, next: NextFunction) => {
+environmentRouter.post('/', requireOrgRole('admin', 'owner'), validate(createEnvironmentSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const orgId = req.orgId!;
         const { name, key } = req.body;
