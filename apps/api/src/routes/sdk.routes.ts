@@ -1,15 +1,19 @@
 import { NextFunction, Request, Response, Router } from "express";
-import { requireApiKey } from "../middleware/api-key.middleware.js";
+import { requireApiKey, requireApiKeyType } from "../middleware/api-key.middleware.js";
 import { flagService } from "../services/flag.service.js";
 import crypto from 'crypto';
 import { isUserInRollout, evaluateRules } from "@feature-flag/sdk";
 import { NotFoundError } from "../utils/errors";
 import { validate } from "../middleware/validate.middleware.js";
 import { evaluateFlagSchema } from "../validators/schemas.js";
+import { gracefulDegradationMiddleware } from "../middleware/graceful-degradation.middleware.js";
+import { sdkRateLimiter } from "../middleware/rate-limiter.middleware.js";
 
 const sdkRouter = Router();
 
-sdkRouter.get('/flags', requireApiKey, async (req: Request, res: Response, next: NextFunction) => {
+sdkRouter.use(requireApiKey, sdkRateLimiter, gracefulDegradationMiddleware);
+
+sdkRouter.get('/flags', requireApiKeyType('client', 'server'), async (req: Request, res: Response, next: NextFunction) => {
     const envId = req.environmentId;
     if (!envId) {
         throw new Error('Environment ID is required');
@@ -43,7 +47,7 @@ sdkRouter.get('/flags', requireApiKey, async (req: Request, res: Response, next:
     }
 })
 
-sdkRouter.post('/evaluate', requireApiKey, validate(evaluateFlagSchema), async (req: Request, res: Response, next: NextFunction) => {
+sdkRouter.post('/evaluate', requireApiKeyType('server'), validate(evaluateFlagSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const envId = req.environmentId!;
         const { flagKey, userId, attributes = {} } = req.body;

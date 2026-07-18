@@ -13,6 +13,8 @@ import flagRouter from './routes/flag.routes.js';
 import sdkRouter from './routes/sdk.routes.js';
 import apiKeyRouter from './routes/api-key.routes.js';
 import auditRouter from './routes/audit.routes.js';
+import staleRouter from './routes/stale-flags.routes.js';
+import { authRateLimiter } from './middleware/rate-limiter.middleware.js';
 
 export const app = express();
 
@@ -23,6 +25,8 @@ app.use(compression());
 
 // Critical: Better Auth catch-all handler MUST be mounted before express.json()
 app.all('/api/auth/*', toNodeHandler(auth));
+app.use("/api/auth", authRateLimiter);
+
 
 // Body parsing for application API routes
 app.use(express.json());
@@ -32,6 +36,7 @@ app.use('/api/flags', flagRouter);
 app.use('/api/api-keys', apiKeyRouter);
 app.use('/api/audit', auditRouter);
 app.use('/sdk', sdkRouter);
+app.use('/api/stale-flags', staleRouter);
 
 // Health Check Endpoint
 app.get('/health', async (_req, res) => {

@@ -102,14 +102,19 @@ it('should create a flag and seed integration', async () => {
 
 it('should list flags for the organization', async () => {
     mockAuthSession();
-    vi.mocked(pool.query).mockResolvedValueOnce({
-        rows: [{ id: 'flag_1', key: 'flag-a', name: 'flag A', org_id: 'org_123' }]
-    } as any);
+    vi.mocked(pool.query)
+        .mockResolvedValueOnce({
+            rows: [{ id: 'flag_1', key: 'flag-a', name: 'flag A', org_id: 'org_123' }]
+        } as any)
+        .mockResolvedValueOnce({
+            rows: [{ id: 'state_1', flag_id: 'flag_1', env_id: 'env_1', enabled: true, rollout_percentage: 100, updated_at: new Date() }]
+        } as any);
 
     const res = await request(app).get('/api/flags');
 
     expect(res.status).toBe(200);
     expect(res.body.flags).toHaveLength(1);
+    expect(res.body.flags[0].states).toHaveLength(1);
 })
 
 it('should return 403 when member tries to delete', async () => {

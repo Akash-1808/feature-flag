@@ -1,13 +1,14 @@
 import { NextFunction, Request, Response, Router } from "express";
-import { requireActiveOrg, requireOrgRole } from "../middleware/session.middleware.js";
+import { requireActiveOrg, requireOrgRole, requireSession } from "../middleware/session.middleware.js";
 import { apiKeyService } from "../services/api-key.service.js";
 import { environmentService } from "../services/environment.service.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { createApiKeySchema, listApiKeysQuerySchema } from "../validators/schemas.js";
+import { dashboardRateLimiter } from "../middleware/rate-limiter.middleware.js";
 
 const apiKeyRouter = Router();
 
-apiKeyRouter.use(requireActiveOrg)
+apiKeyRouter.use(dashboardRateLimiter, requireSession, requireActiveOrg)
 
 apiKeyRouter.post('/', requireOrgRole('admin', 'owner'), validate(createApiKeySchema), async (req, res, next) => {
     try {

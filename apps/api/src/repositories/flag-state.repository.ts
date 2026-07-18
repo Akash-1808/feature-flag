@@ -45,6 +45,17 @@ export const flagStateRepository = {
         return states;
     },
 
+    async findStaleFlags(orgId: string, thresholdDays: number) {
+        const query = `SELECT fs.id, fs.flag_id, fs.environment_id AS env_id, fs.enabled, fs.rollout_pct AS rollout_percentage, fs.updated_at
+        FROM flag_states fs
+        INNER JOIN flags f ON fs.flag_id = f.id
+        WHERE f.org_id = $1
+        AND (fs.rollout_pct = 0 OR fs.rollout_pct = 100)
+        AND fs.updated_at < NOW() - ($2 * INTERVAL '1 day')`
+        const result = await pool.query<FlagState>(query, [orgId, thresholdDays])
+        return result.rows;
+    },
+
     async update(flagId: string, envId: string, enabled?: boolean, rolloutPercentage?: number): Promise<FlagState | null> {
         const query = `UPDATE flag_states SET enabled = COALESCE($3, enabled), rollout_pct = COALESCE($4, rollout_pct), updated_at = NOW()
             WHERE flag_id = $1 AND environment_id = $2
@@ -52,6 +63,12 @@ export const flagStateRepository = {
 
         const result = await pool.query<FlagState>(query, [flagId, envId, enabled ?? null, rolloutPercentage ?? null]);
         return result.rows[0] || null;
+    },
+
+    async findAllorgIds(): Promise<string[]> {
+        const query = `SELECT DISTINCT org_id FROM organization`;
+        const result = await pool.query<{ org_id: string }>(query);
+        return result.rows.map(r => r.org_id);
     }
 
-}
+}

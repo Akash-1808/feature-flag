@@ -3,18 +3,22 @@ import { requireActiveOrg, requireOrgRole, requireSession } from '../middleware/
 import { flagService } from '../services/flag.service.js';
 import { validate } from '../middleware/validate.middleware.js';
 import {
-  createFlagSchema,
-  updateFlagSchema,
-  updateFlagStateSchema,
-  createTargetingRuleSchema,
-  updateTargetingRuleSchema,
-  reorderRulesSchema,
+    createFlagSchema,
+    updateFlagSchema,
+    updateFlagStateSchema,
+    createTargetingRuleSchema,
+    updateTargetingRuleSchema,
+    reorderRulesSchema,
 } from '../validators/schemas.js';
 
 
+import { flagStateRepository } from '../repositories/flag-state.repository.js';
+import { targetingRuleRepository } from '../repositories/targeting-rule.repository.js';
+import { dashboardRateLimiter } from '../middleware/rate-limiter.middleware.js';
+
 const flagRouter = Router();
 
-flagRouter.use(requireSession, requireActiveOrg)
+flagRouter.use(dashboardRateLimiter, requireSession, requireActiveOrg)
 
 flagRouter.post('/', requireOrgRole('admin', 'owner', 'member'), validate(createFlagSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -35,8 +39,14 @@ flagRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const orgId = req.orgId!;
         const flags = await flagService.listByOrgId(orgId);
+        const flagsWithStates = await Promise.all(
+            flags.map(async (flag) => {
+                const states = await flagStateRepository.findByFlagId(flag.id);
+                return { ...flag, states };
+            })
+        );
         res.status(200).json({
-            flags
+            flags: flagsWithStates
         });
     } catch (error) {
         next(error)
@@ -47,12 +57,20 @@ flagRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) =
     try {
         const flagId = req.params.id;
         const orgId = req.orgId!;
-        const result = await flagService.getByIdAndOrg(flagId, orgId)
-        res.status(200).json({ result })
+        const result = await flagService.getByIdAndOrg(flagId, orgId);
+        const states = await flagStateRepository.findByFlagId(result.id);
+        const statesWithRules = await Promise.all(
+            states.map(async (state) => {
+                const rules = await targetingRuleRepository.listByFlagStateId(state.id);
+                return { ...state, rules };
+            })
+        );
+        res.status(200).json({ result, states: statesWithRules });
     } catch (error) {
         next(error)
     }
 })
+
 
 flagRouter.patch('/:id', requireOrgRole('admin', 'owner', 'member'), validate(updateFlagSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -111,7 +129,7 @@ flagRouter.post('/:id/environments/:envId/rules', requireOrgRole('admin', 'owner
     }
 })
 
-flagRouter.patch('/:id/environments/:envId/rules/:ruleId', validate(updateTargetingRuleSchema), async (req: Request, res: Response, next: NextFunction) => {
+flagRouter.patch('/:id/environments/:envId/rules/:ruleId', requireOrgRole('admin', 'owner', 'member'), validate(updateTargetingRuleSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const flagId = req.params.id;
         const envId = req.params.envId;
@@ -128,7 +146,7 @@ flagRouter.patch('/:id/environments/:envId/rules/:ruleId', validate(updateTarget
     }
 })
 
-flagRouter.delete('/:id/environments/:envId/rules/:ruleId', async (req: Request, res: Response, next: NextFunction) => {
+flagRouter.delete('/:id/environments/:envId/rules/:ruleId', requireOrgRole('admin', 'owner'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const flagId = req.params.id;
         const envId = req.params.envId;
@@ -142,7 +160,7 @@ flagRouter.delete('/:id/environments/:envId/rules/:ruleId', async (req: Request,
     }
 })
 
-flagRouter.put('/:id/environments/:envId/rules/reorder', validate(reorderRulesSchema), async (req: Request, res: Response, next: NextFunction) => {
+flagRouter.put('/:id/environments/:envId/rules/reorder', requireOrgRole('admin', 'owner', 'member'), validate(reorderRulesSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const flagId = req.params.id;
         const envId = req.params.envId;

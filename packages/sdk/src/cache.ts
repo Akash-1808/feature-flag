@@ -7,12 +7,22 @@ import { FlagDefinition, Ruleset } from './types.js';
 export class InMemoryCache {
     private ruleset: Ruleset | null = null;
     private flagMap: Map<string, FlagDefinition> = new Map();
+    private lastUpdated: Date | null = null;
+
+    /**
+     * Checks if the cache has a valid state (has been initialized and not expired).
+     */
+    isStateValid(maxAge: number): boolean {
+        if (!this.lastUpdated) return false;
+        return (Date.now() - this.lastUpdated.getTime()) <= maxAge;
+    }
 
     /**
      * Replaces the entire cached ruleset atomically and updates the internal lookup map.
      */
     public setRuleset(ruleset: Ruleset): void {
         this.ruleset = ruleset;
+        this.lastUpdated = new Date();
         this.flagMap.clear();
         for (const flag of ruleset.flags) {
             this.flagMap.set(flag.key, flag);

@@ -6,6 +6,8 @@ export interface PollerConfig {
     interval: number;
     onUpdate: (ruleset: Ruleset) => void;
     onError: (error: Error) => void;
+    onFetchSuccess?: () => void;
+    onFetchError?: () => void;
 }
 
 /**
@@ -13,11 +15,17 @@ export interface PollerConfig {
  * Uses the native `fetch` API.
  */
 export class Poller {
-    private timer: ReturnType<typeof setInterval> | null = null;
+    private timer: ReturnType<typeof setTimeout> | null = null;
     private currentEtag: string | null = null;
     private isPolling = false;
+    private failureCount = 0;
+    private _lastError: Error | null = null;
 
-    constructor(private config: PollerConfig) {}
+    constructor(private config: PollerConfig) { }
+
+    public get lastError(): Error | null {
+        return this._lastError;
+    }
 
     /**
      * Begins the periodic polling loop.
@@ -25,10 +33,7 @@ export class Poller {
     public start(): void {
         if (this.isPolling) return;
         this.isPolling = true;
-
-        this.timer = setInterval(() => {
-            void this.fetchRuleset(this.currentEtag);
-        }, this.config.interval);
+        this.scheduleNext(this.config.interval);
     }
 
     /**
@@ -36,10 +41,22 @@ export class Poller {
      */
     public stop(): void {
         if (this.timer) {
-            clearInterval(this.timer);
+            clearTimeout(this.timer);
             this.timer = null;
         }
         this.isPolling = false;
+    }
+
+    private scheduleNext(delay: number): void {
+        if (!this.isPolling) return;
+
+        this.timer = setTimeout(async () => {
+            await this.fetchRuleset(this.currentEtag);
+            if (this.isPolling) {
+                const nextDelay = this.failureCount === 0 ? this.config.interval : (Math.min(this.config.interval * Math.pow(2, this.failureCount), 300000))
+                this.scheduleNext(nextDelay);
+            }
+        }, delay)
     }
 
     /**
@@ -67,7 +84,7 @@ export class Poller {
             });
 
             if (response.status === 304) {
-                // Not modified, no-op
+                this.onFetchSuccess();
                 return;
             }
 
@@ -76,11 +93,23 @@ export class Poller {
             }
 
             const data = (await response.json()) as Ruleset;
+            this.onFetchSuccess();
             this.currentEtag = data.etag;
             this.config.onUpdate(data);
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
+            this._lastError = err;
+            this.onFetchError();
             this.config.onError(err);
         }
+    }
+    onFetchSuccess() {
+        this.failureCount = 0;
+        this._lastError = null;
+        this.config.onFetchSuccess?.();
+    }
+    onFetchError() {
+        this.failureCount++;
+        this.config.onFetchError?.();
     }
 }

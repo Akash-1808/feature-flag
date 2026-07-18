@@ -11,6 +11,11 @@ export class FeatureFlagClient {
     private cache: InMemoryCache;
     private poller: Poller;
     private initialized = false;
+    private lastSuccessfulFetch: Date | null = null;
+    private connectionStatus: 'connected' | 'degraded' | 'disconnected' = 'disconnected';
+    private consicutiveFailure = 0;
+
+
 
     constructor(private config: FeatureFlagConfig) {
         this.cache = new InMemoryCache();
@@ -28,8 +33,31 @@ export class FeatureFlagClient {
             onUpdate: (ruleset: Ruleset) => {
                 this.cache.setRuleset(ruleset);
             },
-            onError
+            onError,
+            onFetchSuccess: () => {
+                this.lastSuccessfulFetch = new Date();
+                this.consicutiveFailure = 0;
+                this.updateStatus('connected');
+            },
+            onFetchError: () => {
+                this.consicutiveFailure++;
+                this.updateStatus(this.consicutiveFailure < 3 ? 'degraded' : 'disconnected');
+            }
         });
+    }
+
+    private updateStatus(newStatus: 'connected' | 'degraded' | 'disconnected'): void {
+        if (this.connectionStatus !== newStatus) {
+            this.connectionStatus = newStatus;
+
+            if (this.config.onConnectionStatusChange) {
+                this.config.onConnectionStatusChange(newStatus);
+            }
+        }
+    }
+
+    public getConnectionStatus(): 'connected' | 'degraded' | 'disconnected' {
+        return this.connectionStatus;
     }
 
     /**
@@ -104,4 +132,5 @@ export class FeatureFlagClient {
         this.cache.setRuleset({ flags: [], etag: '' });
         this.initialized = false;
     }
+
 }

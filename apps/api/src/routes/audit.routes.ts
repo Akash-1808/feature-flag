@@ -1,12 +1,13 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { requireActiveOrg } from "../middleware/session.middleware";
+import { requireActiveOrg, requireSession } from "../middleware/session.middleware";
 import { auditService } from "../services/audit.service";
 import { validate } from "../middleware/validate.middleware.js";
 import { auditLogQuerySchema } from "../validators/schemas.js";
+import { dashboardRateLimiter } from "../middleware/rate-limiter.middleware.js";
 
 const auditRouter = Router();
 
-auditRouter.use(requireActiveOrg);
+auditRouter.use(dashboardRateLimiter, requireSession, requireActiveOrg);
 
 auditRouter.get('/', validate(auditLogQuerySchema, 'query'), async (req: Request, res: Response, next: NextFunction) => {
     const orgId = req.orgId!;

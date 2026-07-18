@@ -4,6 +4,7 @@ export interface FeatureFlagConfig {
     pollingInterval?: number;
     defaultValues?: Record<string, unknown>;
     onError?: (error: Error) => void;
+    onConnectionStatusChange?: (status: 'connected' | 'degraded' | 'disconnected') => void;
 }
 
 export interface FlagRule {

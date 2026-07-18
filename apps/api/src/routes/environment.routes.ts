@@ -3,10 +3,11 @@ import { requireActiveOrg, requireOrgRole, requireSession } from "../middleware/
 import { environmentService } from "../services/environment.service";
 import { validate } from "../middleware/validate.middleware.js";
 import { createEnvironmentSchema } from "../validators/schemas.js";
+import { dashboardRateLimiter } from "../middleware/rate-limiter.middleware";
 
 const environmentRouter = Router();
 
-environmentRouter.use(requireSession, requireActiveOrg)
+environmentRouter.use(dashboardRateLimiter, requireSession, requireActiveOrg)
 
 
 environmentRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
