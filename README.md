@@ -1,17 +1,17 @@
-# ⚡ Vanguard — Enterprise Feature Flag Platform
+# ⚡ FlagCraft — Enterprise Feature Flag Platform
 
 [![CI Pipeline](https://github.com/Akash-1808/feature-flag/actions/workflows/ci.yml/badge.svg)](https://github.com/Akash-1808/feature-flag/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/Akash-1808/feature-flag)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Monorepo: Turborepo](https://img.shields.io/badge/monorepo-turborepo-red.svg)](https://turbo.build)
 
-**Vanguard** is a universal, ultra-fast, self-hostable feature flag evaluation platform engineered for high availability, zero-latency local evaluations, and automated circuit-breaking.
+**FlagCraft** is a universal, ultra-fast, self-hostable feature flag evaluation platform engineered for high availability, zero-latency local evaluations, and automated circuit-breaking.
 
 ---
 
 ## 🏗️ Architecture & Core Differentiators
 
-Vanguard decouples control-plane management from data-plane evaluation using tiered caching and deterministic hash bucketing:
+FlagCraft decouples control-plane management from data-plane evaluation using tiered caching and deterministic hash bucketing:
 
 ```mermaid
 graph TD
@@ -67,34 +67,34 @@ docker compose up -d
 
 Once running, access the services:
 - **🖥️ Dashboard UI**: [http://localhost:3000](http://localhost:3000)
-- **⚙️ Vanguard API**: [http://localhost:3001](http://localhost:3001)
+- **⚙️ FlagCraft API**: [http://localhost:3001](http://localhost:3001)
 - **📈 Grafana Observability**: [http://localhost:3005](http://localhost:3005) *(Dashboard auto-provisioned)*
 - **📊 Prometheus Targets**: [http://localhost:9090/targets](http://localhost:9090/targets)
 
 ---
 
-## 📦 Using the SDK (`@feature-flag/sdk`)
+## 📦 Using the SDK (`flagcraft`)
 
 ### Installation
 ```bash
-npm install @feature-flag/sdk
+npm install flagcraft
 ```
 
 ### Server-Side / Client-Side Usage
 ```typescript
-import { VanguardSDK } from '@feature-flag/sdk';
+import { FlagCraft } from 'flagcraft';
 
 // Initialize SDK with your environment API Key
-const vanguard = new VanguardSDK({
+const flagcraft = new FlagCraft({
   apiKey: 'server_abc123_your_secret_key',
   baseUrl: 'http://localhost:3001',
   refreshIntervalMs: 30000, // ETag conditional polling interval
 });
 
-await vanguard.init();
+await flagcraft.init();
 
 // Evaluate a feature flag with user targeting attributes
-const isEnabled = vanguard.evaluate('new-checkout-flow', {
+const isEnabled = flagcraft.evaluate('new-checkout-flow', {
   userId: 'usr_998877',
   attributes: {
     country: 'US',
@@ -111,7 +111,7 @@ if (isEnabled) {
 
 ## 🧪 Performance & Load Testing (`k6`)
 
-Vanguard includes comprehensive k6 load tests verified under 100 concurrent virtual users:
+FlagCraft includes comprehensive k6 load tests verified under 100 concurrent virtual users:
 
 ```bash
 # Run Flag Evaluation Latency Test (~300+ req/sec)
@@ -130,7 +130,7 @@ docker run --rm -i -v "${PWD}/k6:/scripts" -e BASE_URL="http://host.docker.inter
 │   ├── api/          # Express/Node.js backend API + Auto-rollback engine
 │   └── dashboard/    # Next.js 15 App Router Management Dashboard
 ├── packages/
-│   └── sdk/          # Universal TypeScript SDK (@feature-flag/sdk)
+│   └── sdk/          # Universal TypeScript SDK (flagcraft)
 ├── infra/
 │   ├── prometheus/   # Prometheus scrape configs
 │   └── grafana/      # Auto-provisioned dashboards & datasources

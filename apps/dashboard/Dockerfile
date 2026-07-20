@@ -18,7 +18,7 @@ COPY apps/dashboard ./apps/dashboard
 
 # Disable telemetry and build standalone bundle
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build --workspace=@feature-flag/sdk && npm run build --workspace=@feature-flag/dashboard
+RUN npm run build --workspace=flagcraft && npm run build --workspace=@flagcraft/dashboard
 
 # Stage 2: Minimal Production Standalone Runner
 FROM node:20-alpine AS runner

@@ -2,7 +2,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { requireApiKey, requireApiKeyType } from "../middleware/api-key.middleware.js";
 import { flagService } from "../services/flag.service.js";
 import crypto from 'crypto';
-import { isUserInRollout, evaluateRules } from "@feature-flag/sdk";
+import { isUserInRollout, evaluateRules } from "flagcraft";
 import { NotFoundError } from "../utils/errors";
 import { validate } from "../middleware/validate.middleware.js";
 import { evaluateFlagSchema } from "../validators/schemas.js";

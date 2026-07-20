@@ -1,5 +1,5 @@
 {
-    "name": "@feature-flag/sdk",
+    "name": "flagcraft",
     "version": "0.1.0",
     "description": "Universal, fail-open feature flag evaluation SDK with ETag conditional caching and auto-rollback support.",
     "type": "module",

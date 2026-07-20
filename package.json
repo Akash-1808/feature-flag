@@ -1,5 +1,5 @@
 {
-    "name": "feature-flag",
+    "name": "flagcraft-monorepo",
     "private": true,
     "packageManager": "npm@11.1.0",
     "workspaces": [

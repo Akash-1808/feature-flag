@@ -6,7 +6,7 @@ on:
 
 jobs:
   publish-npm:
-    name: Build & Publish @feature-flag/sdk
+    name: Build & Publish flagcraft
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -22,8 +22,8 @@ jobs:
       - name: Install Dependencies across Workspace
         run: npm ci
 
-      - name: Build @feature-flag/sdk
-        run: npm run build --workspace=@feature-flag/sdk
+      - name: Build flagcraft
+        run: npm run build --workspace=flagcraft
 
       - name: Verify SDK Distribution Bundle
         run: ls -la packages/sdk/dist

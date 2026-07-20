@@ -4,7 +4,7 @@ import { Poller } from './poller.js';
 import { evaluateFlag } from './evaluator.js';
 
 /**
- * FeatureFlagClient is the main entry point for the @feature-flag/sdk package.
+ * FeatureFlagClient is the main entry point for the flagcraft package.
  * It provides zero-latency local flag evaluation, conditional ETag polling, and fail-open resilience.
  */
 export class FeatureFlagClient {

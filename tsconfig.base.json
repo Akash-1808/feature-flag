@@ -15,10 +15,10 @@
             "@app/*": [
                 "./apps/*"
             ],
-            "@feature-flag/sdk": [
+            "flagcraft": [
                 "./packages/sdk/dist/index.d.ts"
             ],
-            "@feature-flag/sdk/*": [
+            "flagcraft/*": [
                 "./packages/sdk/dist/*"
             ]
         }

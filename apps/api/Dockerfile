@@ -17,7 +17,7 @@ COPY packages/sdk ./packages/sdk
 COPY apps/api ./apps/api
 
 # Build the SDK and API
-RUN npm run build --workspace=@feature-flag/sdk && npm run build --workspace=@feature-flag/api
+RUN npm run build --workspace=flagcraft && npm run build --workspace=@flagcraft/api
 
 # Stage 2: Minimal Production Runtime
 FROM node:20-alpine AS runner

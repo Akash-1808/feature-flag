@@ -79,7 +79,7 @@ jobs:
         run: npm ci
 
       - name: Build Packages (Required for tests)
-        run: npm run build --workspace=@feature-flag/sdk
+        run: npm run build --workspace=flagcraft
 
       - name: Run Test Suites across Monorepo
         run: npm test
