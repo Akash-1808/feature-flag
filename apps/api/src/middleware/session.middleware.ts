@@ -33,12 +33,15 @@ export const requireActiveOrg = async (
   req.orgId = orgId;
   try {
     if (session?.user?.id) {
-      const activeMember = await auth.api.getActiveMember({
-        headers: fromNodeHeaders(req.headers),
-      });
-      if (activeMember) {
-        session.member = activeMember;
-      } else {
+      if (typeof auth.api?.getActiveMember === 'function') {
+        const activeMember = await auth.api.getActiveMember({
+          headers: fromNodeHeaders(req.headers),
+        });
+        if (activeMember) {
+          session.member = activeMember;
+        }
+      }
+      if (!session.member) {
         const result = await pool.query(`SELECT role FROM member WHERE organization_id = $1 AND user_id = $2`, [orgId, session.user.id]);
         if (result.rows[0]) {
           session.member = result.rows[0];

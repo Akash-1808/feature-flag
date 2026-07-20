@@ -2,7 +2,7 @@ import request from "supertest";
 import { beforeEach, expect, it, vi } from "vitest";
 
 vi.mock('../src/auth.js', () => ({
-    auth: { api: { getSession: vi.fn() } }
+    auth: { api: { getSession: vi.fn(), getActiveMember: vi.fn() } }
 }))
 
 vi.mock('better-auth/node', () => ({

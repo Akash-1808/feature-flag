@@ -5,6 +5,7 @@ vi.mock('../src/auth.js', () => ({
   auth: {
     api: {
       getSession: vi.fn(),
+      getActiveMember: vi.fn(),
     },
   },
 }));
@@ -142,7 +143,7 @@ describe('Week 6 Security Hardening Integration Tests', () => {
 
   describe('6.3 Rate Limiting', () => {
     it('should return 429 Too Many Requests when rate limit is exceeded', async () => {
-      vi.mocked(redis.incr).mockResolvedValue(121); // SDK limit is 120
+      vi.mocked(redis.incr).mockResolvedValue(50001); // SDK limit is 50,000
       vi.mocked(redis.pttl).mockResolvedValue(45000);
 
       vi.mocked(pool.query).mockResolvedValueOnce({
