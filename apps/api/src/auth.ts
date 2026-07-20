@@ -32,7 +32,12 @@ export const auth = betterAuth({
   database: pool,
   secret: config.BETTER_AUTH_SECRET,
   baseURL: config.BETTER_AUTH_URL,
-  trustedOrigins: ["http://localhost:3000"],
+  trustedOrigins: [
+    "http://localhost:3000",
+    config.BETTER_AUTH_URL,
+    ...(process.env.DASHBOARD_URL ? [process.env.DASHBOARD_URL] : []),
+    ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
+  ],
   emailAndPassword: {
     enabled: true,
   },
