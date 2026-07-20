@@ -69,7 +69,7 @@ export const authRateLimiter = rateLimiter({
 
 export const sdkRateLimiter = rateLimiter({
     windowMs: 60 * 1000,
-    maxRequests: 120,
+    maxRequests: 50000,
     keyPrefix: "sdk",
 });
 

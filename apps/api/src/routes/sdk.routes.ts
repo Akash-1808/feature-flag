@@ -8,6 +8,8 @@ import { validate } from "../middleware/validate.middleware.js";
 import { evaluateFlagSchema } from "../validators/schemas.js";
 import { gracefulDegradationMiddleware } from "../middleware/graceful-degradation.middleware.js";
 import { sdkRateLimiter } from "../middleware/rate-limiter.middleware.js";
+import { metricsWatcher } from "../jobs/metrics-watcher.js";
+import { flagEvaluationTotal, sdkPollTotal } from "../metrics/prometheus.js";
 
 const sdkRouter = Router();
 
@@ -31,9 +33,17 @@ sdkRouter.get('/flags', requireApiKeyType('client', 'server'), async (req: Reque
         const etag = `W/"${contentHash}"`
 
         if (req.headers['if-none-match'] === etag) {
+            sdkPollTotal.inc({
+                environment_id: envId,
+                status: '304'
+            })
             res.status(304).end();
             return;
         }
+        sdkPollTotal.inc({
+            environment_id: envId,
+            status: '200'
+        });
 
         res.setHeader('ETag', etag);
 
@@ -62,6 +72,7 @@ sdkRouter.post('/evaluate', requireApiKeyType('server'), validate(evaluateFlagSc
 
         // 1. Flag disabled — short circuit
         if (!flag.enabled) {
+            flagEvaluationTotal.inc({ flag_key: flagKey, environment_id: envId, outcome: 'success' });
             res.status(200).json({
                 data: { enabled: false }
             })
@@ -72,6 +83,7 @@ sdkRouter.post('/evaluate', requireApiKeyType('server'), validate(evaluateFlagSc
         if (flag.rules.length > 0 && Object.keys(attributes).length > 0) {
             const ruleValue = evaluateRules(flag.rules, attributes);
             if (ruleValue !== undefined) {
+                flagEvaluationTotal.inc({ flag_key: flagKey, environment_id: envId, outcome: 'success' });
                 res.status(200).json({
                     data: {
                         enabled: true,
@@ -85,6 +97,7 @@ sdkRouter.post('/evaluate', requireApiKeyType('server'), validate(evaluateFlagSc
 
         // 3. No targeting rule matched — fall through to rollout bucketing
         const enabled = isUserInRollout(flagKey, userId, flag.rolloutPercentage);
+        flagEvaluationTotal.inc({ flag_key: flagKey, environment_id: envId, outcome: 'success' });
         res.status(200).json({
             data: {
                 enabled,
@@ -93,9 +106,27 @@ sdkRouter.post('/evaluate', requireApiKeyType('server'), validate(evaluateFlagSc
         });
 
     } catch (error) {
+        if (req.body?.flagKey && req.environmentId) {
+            flagEvaluationTotal.inc({
+                flag_key: req.body.flagKey,
+                environment_id: req.environmentId,
+                outcome: 'error'
+            });
+        }
         next(error)
     }
 
 })
+
+sdkRouter.post('/metrics', async (req: Request, res: Response, next: NextFunction) => {
+    const { flagKey, isError } = req.body;
+    await metricsWatcher.recordMetric(req.environmentId!, flagKey, Boolean(isError));
+    flagEvaluationTotal.inc({
+        flag_key: flagKey,
+        environment_id: req.environmentId!,
+        outcome: isError ? 'error' : 'success'
+    })
+    res.status(202).send();
+});
 
 export default sdkRouter;

@@ -50,6 +50,7 @@ export class StaleFlagDetector {
 
     startPreiodicScan(intervalMs: number = 86400000, thresholdDays: number = 30): void {
         if (this.timer) return;
+        console.log(`[StaleFlagDetector] Started scanning for stale flags every ${intervalMs / 1000}s`);
         this.timer = setInterval(async () => {
             try {
                 const orgIds = await flagStateRepository.findAllorgIds();

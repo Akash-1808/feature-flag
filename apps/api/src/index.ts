@@ -15,6 +15,9 @@ import apiKeyRouter from './routes/api-key.routes.js';
 import auditRouter from './routes/audit.routes.js';
 import staleRouter from './routes/stale-flags.routes.js';
 import { authRateLimiter } from './middleware/rate-limiter.middleware.js';
+import { metricsWatcher } from './jobs/metrics-watcher.js';
+import { staleFlagDetector } from './jobs/stale-flag-detector.js';
+import metricsRouter from './routes/metrics.routes.js';
 
 export const app = express();
 
@@ -37,6 +40,7 @@ app.use('/api/api-keys', apiKeyRouter);
 app.use('/api/audit', auditRouter);
 app.use('/sdk', sdkRouter);
 app.use('/api/stale-flags', staleRouter);
+app.use('/api/metrics', metricsRouter);
 
 // Health Check Endpoint
 app.get('/health', async (_req, res) => {
@@ -77,12 +81,16 @@ if (process.env.NODE_ENV !== 'test') {
 
   const server = app.listen(port, () => {
     console.log(`🚀 API Server listening on port ${port}`);
+    metricsWatcher.startPeriodicWatch(30000); // Check every 30 seconds
+    staleFlagDetector.startPreiodicScan(24 * 60 * 60 * 1000, 30);
   });
 
   // Graceful Shutdown
   const shutdown = async () => {
     console.log('🛑 Shutting down API server...');
     server.close(async () => {
+      metricsWatcher.stopPeriodicWatch();
+      staleFlagDetector.stopPeriodicScan();
       await pool.end();
       await redis.quit();
       console.log('✔ All connections closed gracefully.');

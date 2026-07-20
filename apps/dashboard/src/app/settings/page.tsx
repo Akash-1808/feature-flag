@@ -52,6 +52,10 @@ export default function SettingsPage() {
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
 
+  // User role (fetched from Better Auth org plugin)
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const canManageKeys = userRole === "admin" || userRole === "owner";
+
   const fetchEnvironments = async () => {
     try {
       const response = await apiClient.get("/api/environments");
@@ -85,6 +89,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchEnvironments();
+    // Fetch current user's org role
+    apiClient
+      .get("/api/auth/organization/get-active-member")
+      .then((res: any) => {
+        setUserRole(res?.data?.role || res?.role || null);
+      })
+      .catch(() => setUserRole(null));
   }, []);
 
   useEffect(() => {
@@ -150,6 +161,7 @@ export default function SettingsPage() {
       });
 
       toast.success("API key generated successfully!");
+      console.log("[DEBUG] API key response:", JSON.stringify(response));
       setNewlyCreatedKey(response.apiKey);
       setApiKeys((prev) => [response.apiKeyData, ...prev]);
       setKeyName("");
@@ -321,15 +333,14 @@ export default function SettingsPage() {
                 {apiKeys.map((key) => (
                   <div
                     key={key.id}
-                    className="p-4 rounded-md border border-border/80 bg-card/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-border transition-colors"
+                    className={`p-4 rounded-md border border-border/80 bg-card/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-border transition-colors ${key.revoked_at ? 'opacity-50 grayscale' : ''}`}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 ${
-                          key.type === "server"
-                            ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
-                            : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
-                        }`}
+                        className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 ${key.type === "server"
+                          ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
+                          : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                          }`}
                       >
                         {key.type === "server" ? (
                           <Server className="h-4 w-4" />
@@ -349,6 +360,7 @@ export default function SettingsPage() {
                           >
                             {key.type}
                           </Badge>
+
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                           <span>Prefix: <strong className="text-foreground">{key.key_prefix}••••••••</strong></span>
@@ -358,15 +370,22 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRevokeApiKey(key.id, key.name)}
-                      className="text-destructive hover:bg-destructive/10 border-destructive/30 text-xs h-8 gap-1.5 self-end sm:self-auto"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Revoke Key
-                    </Button>
+                    {canManageKeys && !key.revoked_at && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevokeApiKey(key.id, key.name)}
+                        className="text-destructive hover:bg-destructive/10 border-destructive/30 text-xs h-8 gap-1.5 self-end sm:self-auto"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Revoke Key
+                      </Button>
+                    )}
+                    {key.revoked_at && (
+                      <Badge variant="destructive" className="text-xs uppercase font-mono px-1.5 py-0 bg-destructive/60 text-white-500">
+                        Revoked at {new Date(key.revoked_at).toLocaleDateString()}
+                      </Badge>
+                    )}
                   </div>
                 ))}
               </div>

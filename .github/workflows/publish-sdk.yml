@@ -1,0 +1,35 @@
+name: Publish SDK to npm
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish-npm:
+    name: Build & Publish @feature-flag/sdk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js & npm Registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install Dependencies across Workspace
+        run: npm ci
+
+      - name: Build @feature-flag/sdk
+        run: npm run build --workspace=@feature-flag/sdk
+
+      - name: Verify SDK Distribution Bundle
+        run: ls -la packages/sdk/dist
+
+      - name: Publish to npm Registry
+        run: npm publish --access public
+        working-directory: ./packages/sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

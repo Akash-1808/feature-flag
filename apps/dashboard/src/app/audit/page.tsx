@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { History, Loader2, ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { History, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api-client";
@@ -10,22 +10,40 @@ import { AuditEntry } from "@/components/AuditEntry";
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   const fetchLogs = async (currentPage = 1, isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    if (isRefresh) {
+      setRefreshing(true);
+    } else if (currentPage === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
 
     try {
       const response = await apiClient.get(`/api/audit?page=${currentPage}&limit=20`);
-      setLogs(response.data || []);
+      const newLogs = response.data || [];
+      if (currentPage === 1 || isRefresh) {
+        setLogs(newLogs);
+      } else {
+        // Append new items while deduplicating by ID just in case
+        setLogs((prev) => {
+          const existingIds = new Set(prev.map((item) => item.id));
+          const filteredNew = newLogs.filter((item: any) => !existingIds.has(item.id));
+          return [...prev, ...filteredNew];
+        });
+      }
       setHasMore(response.pagination?.hasMore ?? false);
     } catch (error: any) {
       toast.error(error.message || "Failed to load audit logs.");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
     }
   };
@@ -33,6 +51,34 @@ export default function AuditLogPage() {
   useEffect(() => {
     fetchLogs(page);
   }, [page]);
+
+  // IntersectionObserver to automatically load the next page when scrolling near the bottom
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore && !refreshing) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+     };
+  }, [hasMore, loading, loadingMore, refreshing]);
+
+  const handleRefresh = () => {
+    setPage(1);
+    fetchLogs(1, true);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-12">
@@ -51,7 +97,7 @@ export default function AuditLogPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchLogs(page, true)}
+          onClick={handleRefresh}
           disabled={loading || refreshing}
           className="gap-2 self-start sm:self-auto"
         >
@@ -61,7 +107,7 @@ export default function AuditLogPage() {
       </div>
 
       {/* Logs Timeline */}
-      {loading ? (
+      {loading && page === 1 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="text-sm font-medium">Loading audit timeline...</span>
@@ -84,33 +130,19 @@ export default function AuditLogPage() {
         </div>
       )}
 
-      {/* Pagination Controls */}
-      {!loading && (logs.length > 0 || page > 1) && (
-        <div className="flex items-center justify-between pt-4 border-t border-border/60">
-          <span className="text-xs text-muted-foreground">
-            Page <span className="font-semibold text-foreground">{page}</span>
-          </span>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || loading}
-              className="gap-1 text-xs h-8"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" /> Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!hasMore || loading}
-              className="gap-1 text-xs h-8"
-            >
-              Next <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+      {/* Infinite Scroll Sentinel & Loading Indicator */}
+      {!loading && logs.length > 0 && (
+        <div ref={observerTarget} className="py-6 flex flex-col items-center justify-center gap-2">
+          {loadingMore ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>Loading more events...</span>
+            </div>
+          ) : !hasMore ? (
+            <span className="text-xs text-muted-foreground opacity-60">
+              No more audit events to show
+            </span>
+          ) : null}
         </div>
       )}
     </div>

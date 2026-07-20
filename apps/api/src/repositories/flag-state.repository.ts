@@ -66,9 +66,9 @@ export const flagStateRepository = {
     },
 
     async findAllorgIds(): Promise<string[]> {
-        const query = `SELECT DISTINCT org_id FROM organization`;
-        const result = await pool.query<{ org_id: string }>(query);
-        return result.rows.map(r => r.org_id);
+        const query = `SELECT DISTINCT id FROM organization`;
+        const result = await pool.query<{ id: string }>(query);
+        return result.rows.map(r => r.id);
     }
 
 }

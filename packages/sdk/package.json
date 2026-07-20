@@ -1,9 +1,13 @@
 {
     "name": "@feature-flag/sdk",
     "version": "0.1.0",
+    "description": "Universal, fail-open feature flag evaluation SDK with ETag conditional caching and auto-rollback support.",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -14,6 +18,20 @@
             "import": "./dist/*.js"
         }
     },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Akash-1808/feature-flag.git"
+    },
+    "keywords": [
+        "feature-flags",
+        "sdk",
+        "vanguard",
+        "ab-testing",
+        "rollout",
+        "etag-caching"
+    ],
+    "author": "Vanguard Team",
+    "license": "MIT",
     "scripts": {
         "build": "tsc",
         "test": "vitest run"

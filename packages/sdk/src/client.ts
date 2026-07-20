@@ -14,7 +14,8 @@ export class FeatureFlagClient {
     private lastSuccessfulFetch: Date | null = null;
     private connectionStatus: 'connected' | 'degraded' | 'disconnected' = 'disconnected';
     private consicutiveFailure = 0;
-
+    private metricsQueue: Array<{ flagKey: string, isError: boolean }> = [];
+    private flushTimer: ReturnType<typeof setInterval> | null = null;
 
 
     constructor(private config: FeatureFlagConfig) {
@@ -44,6 +45,44 @@ export class FeatureFlagClient {
                 this.updateStatus(this.consicutiveFailure < 3 ? 'degraded' : 'disconnected');
             }
         });
+        this.flushTimer = setInterval(() => {
+            this.flushMetrics();
+        }, 5000);
+    }
+
+    private async flushMetrics(): Promise<void> {
+        if (this.metricsQueue.length === 0) return;
+
+        const batch = this.metricsQueue.splice(0, this.metricsQueue.length);
+        const baseUrl = this.config.baseUrl || 'http://localhost:3001';
+        try {
+            const url = `${baseUrl}/sdk/metrics`;
+            const payload = JSON.stringify({ metrics: batch });
+
+            await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': this.config.apiKey,
+                },
+                keepalive: true,
+                body: payload
+            })
+        }
+        catch (error) {
+            if (this.config.onError) {
+                this.config.onError(error instanceof Error ? error : new Error('Failed to flush metrics'))
+            }
+        }
+    }
+
+    trackMetrics(flagKey: string, isError: boolean): void {
+        this.metricsQueue.push({
+            flagKey, isError
+        });
+        if (this.metricsQueue.length >= 100) {
+            this.flushMetrics();
+        }
     }
 
     private updateStatus(newStatus: 'connected' | 'degraded' | 'disconnected'): void {
@@ -94,6 +133,7 @@ export class FeatureFlagClient {
         }
 
         const val = evaluateFlag(flag, context);
+        this.trackMetrics(flagKey, false);
         return Boolean(val);
     }
 
@@ -107,7 +147,9 @@ export class FeatureFlagClient {
             return this.config.defaultValues?.[flagKey];
         }
 
-        return evaluateFlag(flag, context);
+        const val = evaluateFlag(flag, context);
+        this.trackMetrics(flagKey, false);
+        return val;
     }
 
     /**
@@ -128,6 +170,10 @@ export class FeatureFlagClient {
      * Stops the polling loop and clears the cache. Should be called when shutting down the host application.
      */
     public destroy(): void {
+        if (this.flushTimer) {
+            clearInterval(this.flushTimer);
+            this.flushTimer = null;
+        }
         this.poller.stop();
         this.cache.setRuleset({ flags: [], etag: '' });
         this.initialized = false;

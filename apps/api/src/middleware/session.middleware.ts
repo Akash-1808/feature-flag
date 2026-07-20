@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../auth.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
+import { pool } from '../db/pool.js';
 
 // Add global Express type augmentation so TypeScript knows about req.orgId across all routes:
 declare global {
@@ -16,11 +17,11 @@ declare global {
 /**
  * Middleware: Ensures an active organization is selected and attaches req.orgId
  */
-export const requireActiveOrg = (
+export const requireActiveOrg = async (
   req: Request,
   _res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   const session = req.session || (req as any).session;
   const orgId = session?.session?.activeOrganizationId;
 
@@ -30,7 +31,24 @@ export const requireActiveOrg = (
   }
 
   req.orgId = orgId;
-  next();
+  try {
+    if (session?.user?.id) {
+      const activeMember = await auth.api.getActiveMember({
+        headers: fromNodeHeaders(req.headers),
+      });
+      if (activeMember) {
+        session.member = activeMember;
+      } else {
+        const result = await pool.query(`SELECT role FROM member WHERE organization_id = $1 AND user_id = $2`, [orgId, session.user.id]);
+        if (result.rows[0]) {
+          session.member = result.rows[0];
+        }
+      }
+    }
+    next();
+  } catch (error) {
+    next(error)
+  }
 };
 
 
