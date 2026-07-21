@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://feature-flag-4f57.onrender.com/api/:path*"
+    },
+    {
+      "source": "/sdk/:path*",
+      "destination": "https://feature-flag-4f57.onrender.com/sdk/:path*"
+    }
+  ]
+}
