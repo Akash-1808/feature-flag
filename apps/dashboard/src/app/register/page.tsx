@@ -63,7 +63,7 @@ export default function RegisterPage() {
           <Layers className="h-6 w-6" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Vanguard Platform
+          FlagCraft Platform
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Create your enterprise feature flag workspace

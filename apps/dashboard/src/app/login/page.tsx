@@ -47,7 +47,7 @@ export default function LoginPage() {
           <Layers className="h-6 w-6" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Vanguard Platform
+          FlagCraft Platform
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Sign in to manage your feature flags & rollouts

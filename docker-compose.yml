@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: vanguard-postgres
+    container_name: flagcraft-postgres
     ports:
       - '5432:5432'
     environment:
@@ -20,7 +20,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: vanguard-redis
+    container_name: flagcraft-redis
     ports:
       - '6379:6379'
     healthcheck:
@@ -33,14 +33,14 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: vanguard-api
+    container_name: flagcraft-api
     ports:
       - '3001:3001'
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/feature_flags
       REDIS_URL: redis://redis:6379
       PORT: 3001
-      BETTER_AUTH_SECRET: vanguard_production_secret_change_me
+      BETTER_AUTH_SECRET: flagcraft_production_secret_change_me
       BETTER_AUTH_URL: http://localhost:3001
       NODE_ENV: production
     depends_on:
@@ -53,7 +53,7 @@ services:
     build:
       context: .
       dockerfile: apps/dashboard/Dockerfile
-    container_name: vanguard-dashboard
+    container_name: flagcraft-dashboard
     ports:
       - '3000:3000'
     environment:
@@ -65,7 +65,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: vanguard-prometheus
+    container_name: flagcraft-prometheus
     ports:
       - '9090:9090'
     volumes:
@@ -77,7 +77,7 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.1
-    container_name: vanguard-grafana
+    container_name: flagcraft-grafana
     ports:
       - '3005:3000'
     environment:

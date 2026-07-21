@@ -36,7 +36,7 @@ export function Sidebar() {
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sidebar-foreground tracking-tight leading-none">
-              Vanguard
+              FlagCraft
             </span>
             <span className="text-[11px] text-muted-foreground mt-1">
               Feature Flag Platform

@@ -4,7 +4,7 @@ export const register = new client.Registry();
 
 client.collectDefaultMetrics({
     register,
-    prefix: 'vanguard_api_',
+    prefix: 'flagcraft_api_',
 });
 
 export const flagEvaluationTotal = new client.Counter({
