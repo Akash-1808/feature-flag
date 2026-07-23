@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Layers, ArrowRight, Loader2, Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,27 +20,7 @@ export default function SelectOrgPage() {
   const [loading, setLoading] = useState(true);
   const [selectingId, setSelectingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchOrgs = async () => {
-      try {
-        const res = await apiClient.get("/api/organizations");
-        setOrganizations(res.organizations || []);
-        
-        // Auto-select if only 1 organization exists
-        if (res.organizations?.length === 1) {
-          handleSelectOrg(res.organizations[0].id);
-        }
-      } catch (error: any) {
-        toast.error("Failed to load workspaces. Please log in again.");
-        router.push("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrgs();
-  }, [router]);
-
-  const handleSelectOrg = async (orgId: string) => {
+  const handleSelectOrg = useCallback(async (orgId: string) => {
     setSelectingId(orgId);
     try {
       await apiClient.post("/api/organizations/set-active", {
@@ -48,11 +28,33 @@ export default function SelectOrgPage() {
       });
       toast.success("Workspace selected!");
       router.push("/flags");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to select workspace.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to select workspace.";
+      toast.error(message);
       setSelectingId(null);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    const fetchOrgs = async () => {
+      try {
+        const res = await apiClient.get<{ organizations: Organization[] }>("/api/organizations");
+        const orgs = res.organizations || [];
+        setOrganizations(orgs);
+        
+        // Auto-select if only 1 organization exists
+        if (orgs.length === 1) {
+          handleSelectOrg(orgs[0].id);
+        }
+      } catch (_error: unknown) {
+        toast.error("Failed to load workspaces. Please log in again.");
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrgs();
+  }, [router, handleSelectOrg]);
 
   return (
     <div className="w-full max-w-2xl mx-auto py-12 px-4">

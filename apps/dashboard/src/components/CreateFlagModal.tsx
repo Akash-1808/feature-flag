@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Plus, Loader2, Flag, KeyRound, AlignLeft, Layers } from "lucide-react";
+import React, { useState } from "react";
+import { Plus, Loader2, Flag, KeyRound, AlignLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -19,7 +19,7 @@ import { apiClient } from "@/lib/api-client";
 interface CreateFlagModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (newFlag: any) => void;
+  onSuccess: (newFlag: Record<string, unknown>) => void;
 }
 
 export function CreateFlagModal({
@@ -35,15 +35,16 @@ export function CreateFlagModal({
   const [loading, setLoading] = useState(false);
 
   // Auto-slugify name to key unless user manually typed in key field
-  useEffect(() => {
+  const handleNameChange = (newName: string) => {
+    setName(newName);
     if (!keyManuallyEdited) {
-      const slug = name
+      const slug = newName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
       setKey(slug);
     }
-  }, [name, keyManuallyEdited]);
+  };
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setKeyManuallyEdited(true);
@@ -59,7 +60,7 @@ export function CreateFlagModal({
 
     setLoading(true);
     try {
-      const response = await apiClient.post("/api/flags", {
+      const response = await apiClient.post<Record<string, unknown>>("/api/flags", {
         name: name.trim(),
         key: key.trim(),
         description: description.trim() || null,
@@ -75,8 +76,9 @@ export function CreateFlagModal({
       setDescription("");
       setType("boolean");
       setKeyManuallyEdited(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create feature flag.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to create feature flag.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -105,7 +107,7 @@ export function CreateFlagModal({
               id="flag-name"
               placeholder="e.g. New Checkout UI"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               disabled={loading}
               required
             />

@@ -20,13 +20,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api-client";
 
-interface TargetingRule {
+export interface TargetingRule {
   id: string;
   flag_state_id: string;
   priority: number;
-  conditions: Record<string, any>;
-  value?: any;
-  variation?: any;
+  conditions: Record<string, unknown>;
+  value?: unknown;
+  variation?: unknown;
 }
 
 interface TargetingRuleEditorProps {
@@ -51,7 +51,7 @@ export function TargetingRuleEditor({
   const [newAttribute, setNewAttribute] = useState("email");
   const [newOperator, setNewOperator] = useState("$eq");
   const [newValue, setNewValue] = useState("");
-  const [newVariation, setNewVariation] = useState<any>(
+  const [newVariation, setNewVariation] = useState<unknown>(
     flagType === "boolean" ? true : ""
   );
 
@@ -60,7 +60,7 @@ export function TargetingRuleEditor({
   const [editAttribute, setEditAttribute] = useState("");
   const [editOperator, setEditOperator] = useState("$eq");
   const [editValue, setEditValue] = useState("");
-  const [editVariation, setEditVariation] = useState<any>(true);
+  const [editVariation, setEditVariation] = useState<unknown>(true);
 
   // Helper to format/parse condition value based on operator
   const parseValueForOperator = (val: string, op: string) => {
@@ -79,7 +79,7 @@ export function TargetingRuleEditor({
     return val;
   };
 
-  const formatValueForDisplay = (val: any): string => {
+  const formatValueForDisplay = (val: unknown): string => {
     if (Array.isArray(val)) return val.join(", ");
     if (typeof val === "object" && val !== null) return JSON.stringify(val);
     return String(val);
@@ -95,7 +95,7 @@ export function TargetingRuleEditor({
     setLoading(true);
     try {
       const parsedVal = parseValueForOperator(newValue, newOperator);
-      const conditions: Record<string, any> =
+      const conditions: Record<string, unknown> =
         newOperator === "$eq"
           ? { [newAttribute.trim()]: parsedVal }
           : { [newAttribute.trim()]: { [newOperator]: parsedVal } };
@@ -104,10 +104,10 @@ export function TargetingRuleEditor({
         flagType === "boolean"
           ? newVariation === true || newVariation === "true"
           : flagType === "number"
-          ? Number(newVariation)
-          : newVariation;
+            ? Number(newVariation)
+            : newVariation;
 
-      const response = await apiClient.post(
+      const response = await apiClient.post<TargetingRule>(
         `/api/flags/${flagId}/environments/${envId}/rules`,
         {
           conditions,
@@ -115,14 +115,15 @@ export function TargetingRuleEditor({
         }
       );
 
-      const addedRule = response.rule;
+      const addedRule = response;
       const updatedRules = [...rules, addedRule];
       onRulesChange(updatedRules);
       toast.success("Targeting rule created!");
       setIsAdding(false);
       setNewValue("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create rule.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to create rule.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -137,8 +138,9 @@ export function TargetingRuleEditor({
       const updatedRules = rules.filter((r) => r.id !== ruleId);
       onRulesChange(updatedRules);
       toast.success("Rule deleted.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete rule.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete rule.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -153,7 +155,7 @@ export function TargetingRuleEditor({
     if (typeof rawVal === "object" && rawVal !== null && !Array.isArray(rawVal)) {
       const op = Object.keys(rawVal)[0] || "$eq";
       setEditOperator(op);
-      setEditValue(formatValueForDisplay(rawVal[op]));
+      setEditValue(formatValueForDisplay((rawVal as Record<string, unknown>)[op]));
     } else {
       setEditOperator("$eq");
       setEditValue(formatValueForDisplay(rawVal));
@@ -166,7 +168,7 @@ export function TargetingRuleEditor({
     setLoading(true);
     try {
       const parsedVal = parseValueForOperator(editValue, editOperator);
-      const conditions: Record<string, any> =
+      const conditions: Record<string, unknown> =
         editOperator === "$eq"
           ? { [editAttribute.trim()]: parsedVal }
           : { [editAttribute.trim()]: { [editOperator]: parsedVal } };
@@ -175,10 +177,10 @@ export function TargetingRuleEditor({
         flagType === "boolean"
           ? editVariation === true || editVariation === "true"
           : flagType === "number"
-          ? Number(editVariation)
-          : editVariation;
+            ? Number(editVariation)
+            : editVariation;
 
-      const response = await apiClient.patch(
+      const response = await apiClient.patch<TargetingRule>(
         `/api/flags/${flagId}/environments/${envId}/rules/${ruleId}`,
         {
           conditions,
@@ -187,13 +189,14 @@ export function TargetingRuleEditor({
       );
 
       const updatedRules = rules.map((r) =>
-        r.id === ruleId ? response.rule || { ...r, conditions, variation: parsedVariation } : r
+        r.id === ruleId ? response || { ...r, conditions, variation: parsedVariation } : r
       );
       onRulesChange(updatedRules);
       toast.success("Rule updated successfully.");
       setEditingRuleId(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update rule.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update rule.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -219,8 +222,9 @@ export function TargetingRuleEditor({
         }
       );
       toast.success("Rules reordered.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reorder rules.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to reorder rules.";
+      toast.error(message);
       onRulesChange(rules); // Revert
     } finally {
       setLoading(false);
@@ -342,7 +346,7 @@ export function TargetingRuleEditor({
                 </select>
               ) : (
                 <Input
-                  value={newVariation}
+                  value={String(newVariation)}
                   onChange={(e) => setNewVariation(e.target.value)}
                   placeholder="Return variant value..."
                   className="h-8 text-xs max-w-xs"
@@ -381,7 +385,7 @@ export function TargetingRuleEditor({
                 : "$eq";
             const displayVal =
               typeof rawVal === "object" && rawVal !== null && !Array.isArray(rawVal)
-                ? formatValueForDisplay((rawVal as any)[op])
+                ? formatValueForDisplay((rawVal as Record<string, unknown>)[op])
                 : formatValueForDisplay(rawVal);
             const servedVal =
               rule.variation !== undefined ? rule.variation : rule.value;
@@ -434,7 +438,7 @@ export function TargetingRuleEditor({
                           </select>
                         ) : (
                           <Input
-                            value={editVariation}
+                            value={String(editVariation)}
                             onChange={(e) => setEditVariation(e.target.value)}
                             className="h-7 text-xs w-32"
                           />
@@ -481,8 +485,8 @@ export function TargetingRuleEditor({
                           {op === "$eq"
                             ? "equals"
                             : op === "$in"
-                            ? "in list"
-                            : op.replace("$", "")}
+                              ? "in list"
+                              : op.replace("$", "")}
                         </span>
                         <code className="font-mono font-semibold bg-muted px-1.5 py-0.5 rounded text-foreground">
                           {displayVal}
@@ -492,13 +496,12 @@ export function TargetingRuleEditor({
                       <div className="flex items-center gap-1.5 text-xs pl-2 border-l border-border/60">
                         <span className="text-muted-foreground">then serve</span>
                         <Badge
-                          className={`text-[11px] px-2 py-0 font-mono ${
-                            String(servedVal) === "true"
-                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                              : String(servedVal) === "false"
+                          className={`text-[11px] px-2 py-0 font-mono ${String(servedVal) === "true"
+                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                            : String(servedVal) === "false"
                               ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
                               : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
-                          }`}
+                            }`}
                         >
                           {String(servedVal)}
                         </Badge>

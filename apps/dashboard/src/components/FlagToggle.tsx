@@ -34,8 +34,9 @@ export function FlagToggle({
           ? "Flag enabled for this environment."
           : "Flag disabled for this environment."
       );
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update flag status.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update flag status.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

@@ -7,7 +7,7 @@
  * - Intercepts 401 Unauthorized responses and redirects to `/login`.
  */
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: {
     message: string;
@@ -42,10 +42,18 @@ async function request<T>(
   const data = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
-    const errorMsg =
-      typeof data === "object" && data !== null && (data.error?.message || data.message || data.error)
-        ? data.error?.message || data.message || typeof data.error === "string" ? data.error : JSON.stringify(data.error)
-        : `HTTP Error ${response.status}: ${response.statusText}`;
+    let errorMsg = `HTTP Error ${response.status}: ${response.statusText}`;
+    if (typeof data === "object" && data !== null) {
+      const errObj = data as Record<string, unknown>;
+      const nested = errObj.error as Record<string, unknown> | string | undefined;
+      if (typeof nested === "string") {
+        errorMsg = nested;
+      } else if (nested && typeof nested === "object" && typeof nested.message === "string") {
+        errorMsg = nested.message;
+      } else if (typeof errObj.message === "string") {
+        errorMsg = errObj.message;
+      }
+    }
     throw new Error(errorMsg);
   }
 
@@ -53,30 +61,30 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get: <T = any>(url: string, options?: RequestInit) =>
+  get: <T = unknown>(url: string, options?: RequestInit) =>
     request<T>(url, { ...options, method: "GET" }),
 
-  post: <T = any>(url: string, body?: any, options?: RequestInit) =>
+  post: <T = unknown>(url: string, body?: unknown, options?: RequestInit) =>
     request<T>(url, {
       ...options,
       method: "POST",
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  patch: <T = any>(url: string, body?: any, options?: RequestInit) =>
+  patch: <T = unknown>(url: string, body?: unknown, options?: RequestInit) =>
     request<T>(url, {
       ...options,
       method: "PATCH",
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  put: <T = any>(url: string, body?: any, options?: RequestInit) =>
+  put: <T = unknown>(url: string, body?: unknown, options?: RequestInit) =>
     request<T>(url, {
       ...options,
       method: "PUT",
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
 
-  del: <T = any>(url: string, options?: RequestInit) =>
+  del: <T = unknown>(url: string, options?: RequestInit) =>
     request<T>(url, { ...options, method: "DELETE" }),
 };

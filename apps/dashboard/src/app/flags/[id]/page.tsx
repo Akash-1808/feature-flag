@@ -18,17 +18,40 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FlagToggle } from "@/components/FlagToggle";
 import { RolloutSlider } from "@/components/RolloutSlider";
-import { TargetingRuleEditor } from "@/components/TargetingRuleEditor";
+import { TargetingRuleEditor, TargetingRule } from "@/components/TargetingRuleEditor";
 import { apiClient } from "@/lib/api-client";
+
+interface FlagData {
+  id: string;
+  key: string;
+  name: string;
+  description?: string;
+  type: string;
+  created_at?: string;
+}
+
+interface FlagState {
+  env_id?: string;
+  environment_id?: string;
+  enabled: boolean;
+  rollout_percentage: number;
+  rules: TargetingRule[];
+}
+
+interface Environment {
+  id: string;
+  name: string;
+  key: string;
+}
 
 export default function FlagDetailPage() {
   const params = useParams();
   const router = useRouter();
   const flagId = params?.id as string;
 
-  const [flag, setFlag] = useState<any>(null);
-  const [states, setStates] = useState<any[]>([]);
-  const [environments, setEnvironments] = useState<any[]>([]);
+  const [flag, setFlag] = useState<FlagData | null>(null);
+  const [states, setStates] = useState<FlagState[]>([]);
+  const [environments, setEnvironments] = useState<Environment[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedKey, setCopiedKey] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("");
@@ -37,16 +60,18 @@ export default function FlagDetailPage() {
   const fetchFlagData = async () => {
     try {
       const [flagRes, envsRes] = await Promise.all([
-        apiClient.get(`/api/flags/${flagId}`),
-        apiClient.get("/api/environments"),
+        apiClient.get<{result: FlagData; states: FlagState[]}>(`/api/flags/${flagId}`),
+        apiClient.get<{
+          environments: Environment[];
+        }>("/api/environments"),
       ]);
 
-      const loadedFlag = flagRes.result || flagRes.flag || flagRes;
+      const loadedFlag = flagRes.result;
       const loadedStates = flagRes.states || [];
       setFlag(loadedFlag);
       setStates(loadedStates);
 
-      const sortedEnvs = (envsRes.environments || []).sort((a: any, b: any) => {
+      const sortedEnvs = (envsRes.environments || []).sort((a: Environment, b: Environment) => {
         const order: Record<string, number> = { dev: 1, staging: 2, prod: 3 };
         return (order[a.key] || 99) - (order[b.key] || 99);
       });
@@ -55,8 +80,9 @@ export default function FlagDetailPage() {
       if (sortedEnvs.length > 0 && !activeTab) {
         setActiveTab(sortedEnvs[0].id);
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load feature flag details.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to load feature flag details.";
+      toast.error(message);
       router.push("/flags");
     } finally {
       setLoading(false);
@@ -78,6 +104,7 @@ export default function FlagDetailPage() {
   };
 
   const handleDeleteFlag = async () => {
+    if (!flag) return;
     if (!window.confirm(`Are you sure you want to permanently delete "${flag.name}"? This action cannot be undone and will immediately affect SDK evaluations.`)) {
       return;
     }
@@ -87,8 +114,9 @@ export default function FlagDetailPage() {
       await apiClient.del(`/api/flags/${flagId}`);
       toast.success("Feature flag deleted successfully.");
       router.push("/flags");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete feature flag.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete feature flag.";
+      toast.error(message);
       setDeleting(false);
     }
   };
@@ -105,7 +133,7 @@ export default function FlagDetailPage() {
     );
   };
 
-  const updateStateLocally = (envId: string, patch: Partial<any>) => {
+  const updateStateLocally = (envId: string, patch: Partial<FlagState>) => {
     setStates((prev) =>
       prev.map((s) => {
         if (s.env_id === envId || s.environment_id === envId) {
@@ -223,13 +251,12 @@ export default function FlagDetailPage() {
                   className="px-4 py-2 gap-2 text-xs font-semibold data-active:shadow-sm"
                 >
                   <span
-                    className={`h-2 w-2 rounded-full ${
-                      state.enabled
-                        ? state.rollout_percentage === 100
-                          ? "bg-emerald-500"
-                          : "bg-blue-500 animate-pulse"
-                        : "bg-muted-foreground/40"
-                    }`}
+                    className={`h-2 w-2 rounded-full ${state.enabled
+                      ? state.rollout_percentage === 100
+                        ? "bg-emerald-500"
+                        : "bg-blue-500 animate-pulse"
+                      : "bg-muted-foreground/40"
+                      }`}
                   />
                   {env.name}
                 </TabsTrigger>

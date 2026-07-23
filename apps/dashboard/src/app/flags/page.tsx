@@ -18,10 +18,32 @@ import {
 import { apiClient } from "@/lib/api-client";
 import { CreateFlagModal } from "@/components/CreateFlagModal";
 
+interface FlagStateEntry {
+  env_id?: string;
+  environment_id?: string;
+  enabled: boolean;
+  rollout_percentage: number;
+}
+
+interface FlagEntry {
+  id: string;
+  key: string;
+  name: string;
+  description?: string;
+  type: string;
+  states?: FlagStateEntry[];
+}
+
+interface EnvironmentEntry {
+  id: string;
+  name: string;
+  key: string;
+}
+
 export default function FlagsPage() {
   const router = useRouter();
-  const [flags, setFlags] = useState<any[]>([]);
-  const [environments, setEnvironments] = useState<any[]>([]);
+  const [flags, setFlags] = useState<FlagEntry[]>([]);
+  const [environments, setEnvironments] = useState<EnvironmentEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -30,19 +52,20 @@ export default function FlagsPage() {
   const fetchData = async () => {
     try {
       const [flagsRes, envsRes] = await Promise.all([
-        apiClient.get("/api/flags"),
-        apiClient.get("/api/environments"),
+        apiClient.get<{ flags: FlagEntry[] }>("/api/flags"),
+        apiClient.get<{ environments: EnvironmentEntry[] }>("/api/environments"),
       ]);
 
       setFlags(flagsRes.flags || []);
       // Sort environments so Development comes first, then Staging, then Production
-      const sortedEnvs = (envsRes.environments || []).sort((a: any, b: any) => {
+      const sortedEnvs = (envsRes.environments || []).sort((a: EnvironmentEntry, b: EnvironmentEntry) => {
         const order: Record<string, number> = { dev: 1, staging: 2, prod: 3 };
         return (order[a.key] || 99) - (order[b.key] || 99);
       });
       setEnvironments(sortedEnvs);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load feature flags.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to load feature flags.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -68,9 +91,9 @@ export default function FlagsPage() {
         flag.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const renderStatusDot = (flag: any, env: any) => {
+  const renderStatusDot = (flag: FlagEntry, env: EnvironmentEntry) => {
     const state = flag.states?.find(
-      (s: any) => s.env_id === env.id || s.environment_id === env.id
+      (s: FlagStateEntry) => s.env_id === env.id || s.environment_id === env.id
     );
 
     if (!state || !state.enabled || state.rollout_percentage === 0) {
@@ -252,10 +275,10 @@ export default function FlagsPage() {
       <CreateFlagModal
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
-        onSuccess={(response) => {
+        onSuccess={(response: any) => {
           if (response?.flag) {
             setFlags((prev) => [
-              { ...response.flag, states: response.states || [] },
+              { ...(response.flag as FlagEntry), states: response.states || [] },
               ...prev,
             ]);
           } else {

@@ -11,9 +11,9 @@ interface AuditEntryProps {
     entity_type: string;
     entity_id: string;
     actor_id: string | null;
-    before_state?: any;
-    after_state?: any;
-    metadata?: any;
+    before_state?: Record<string, unknown>;
+    after_state?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
     created_at: string | Date;
   };
 }

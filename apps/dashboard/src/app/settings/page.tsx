@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Settings,
   KeyRound,
@@ -9,7 +9,6 @@ import {
   Trash2,
   Copy,
   Check,
-  AlertTriangle,
   Loader2,
   ShieldAlert,
   Server,
@@ -31,10 +30,31 @@ import {
 } from "@/components/ui/dialog";
 import { apiClient } from "@/lib/api-client";
 
+interface SettingsEnvironment {
+  id: string;
+  name: string;
+  key: string;
+}
+
+interface ApiKeyEntry {
+  id: string;
+  name: string;
+  key_prefix: string;
+  type: string;
+  created_at: string;
+  last_used_at?: string;
+  revoked_at?: string;
+}
+
+interface MemberRoleResponse {
+  data?: { role?: string };
+  role?: string;
+}
+
 export default function SettingsPage() {
-  const [environments, setEnvironments] = useState<any[]>([]);
+  const [environments, setEnvironments] = useState<SettingsEnvironment[]>([]);
   const [selectedEnvId, setSelectedEnvId] = useState<string>("");
-  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [apiKeys, setApiKeys] = useState<ApiKeyEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [keysLoading, setKeysLoading] = useState(false);
 
@@ -56,10 +76,10 @@ export default function SettingsPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const canManageKeys = userRole === "admin" || userRole === "owner";
 
-  const fetchEnvironments = async () => {
+  const fetchEnvironments = useCallback(async () => {
     try {
-      const response = await apiClient.get("/api/environments");
-      const sorted = (response.environments || []).sort((a: any, b: any) => {
+      const response = await apiClient.get<{ environments: SettingsEnvironment[] }>("/api/environments");
+      const sorted = (response.environments || []).sort((a: SettingsEnvironment, b: SettingsEnvironment) => {
         const order: Record<string, number> = { dev: 1, staging: 2, prod: 3 };
         return (order[a.key] || 99) - (order[b.key] || 99);
       });
@@ -67,42 +87,44 @@ export default function SettingsPage() {
       if (sorted.length > 0 && !selectedEnvId) {
         setSelectedEnvId(sorted[0].id);
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load environments.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to load environments.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedEnvId]);
 
-  const fetchApiKeys = async (envId: string) => {
+  const fetchApiKeys = useCallback(async (envId: string) => {
     if (!envId) return;
     setKeysLoading(true);
     try {
-      const response = await apiClient.get(`/api/api-keys?environmentId=${envId}`);
+      const response = await apiClient.get<any>(`/api/api-keys?environmentId=${envId}`);
       setApiKeys(Array.isArray(response) ? response : response.apiKeys || []);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load API keys.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to load API keys.";
+      toast.error(message);
     } finally {
       setKeysLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchEnvironments();
     // Fetch current user's org role
     apiClient
-      .get("/api/auth/organization/get-active-member")
-      .then((res: any) => {
+      .get<MemberRoleResponse>("/api/auth/organization/get-active-member")
+      .then((res) => {
         setUserRole(res?.data?.role || res?.role || null);
       })
       .catch(() => setUserRole(null));
-  }, []);
+  }, [fetchEnvironments]);
 
   useEffect(() => {
     if (selectedEnvId) {
       fetchApiKeys(selectedEnvId);
     }
-  }, [selectedEnvId]);
+  }, [selectedEnvId, fetchApiKeys]);
 
   const handleCreateEnvironment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +135,7 @@ export default function SettingsPage() {
 
     setEnvSubmitting(true);
     try {
-      const response = await apiClient.post("/api/environments", {
+      const response = await apiClient.post<{ environment: SettingsEnvironment }>("/api/environments", {
         name: newEnvName.trim(),
         key: newEnvKey.trim().toLowerCase(),
       });
@@ -121,8 +143,9 @@ export default function SettingsPage() {
       setEnvironments((prev) => [...prev, response.environment]);
       setNewEnvName("");
       setNewEnvKey("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create environment.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to create environment.";
+      toast.error(message);
     } finally {
       setEnvSubmitting(false);
     }
@@ -140,8 +163,9 @@ export default function SettingsPage() {
       if (selectedEnvId === id) {
         setSelectedEnvId(environments.find((e) => e.id !== id)?.id || "");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete environment.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete environment.";
+      toast.error(message);
     }
   };
 
@@ -154,7 +178,7 @@ export default function SettingsPage() {
 
     setKeySubmitting(true);
     try {
-      const response = await apiClient.post("/api/api-keys", {
+      const response = await apiClient.post<{ apiKey: string; apiKeyData: ApiKeyEntry }>("/api/api-keys", {
         environmentId: selectedEnvId,
         type: keyType,
         name: keyName.trim(),
@@ -165,8 +189,9 @@ export default function SettingsPage() {
       setNewlyCreatedKey(response.apiKey);
       setApiKeys((prev) => [response.apiKeyData, ...prev]);
       setKeyName("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to generate API key.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to generate API key.";
+      toast.error(message);
     } finally {
       setKeySubmitting(false);
     }
@@ -181,8 +206,9 @@ export default function SettingsPage() {
       await apiClient.del(`/api/api-keys/${id}`);
       toast.success("API key revoked.");
       setApiKeys((prev) => prev.filter((k) => k.id !== id));
-    } catch (error: any) {
-      toast.error(error.message || "Failed to revoke API key.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to revoke API key.";
+      toast.error(message);
     }
   };
 

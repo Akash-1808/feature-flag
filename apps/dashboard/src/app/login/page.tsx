@@ -32,8 +32,9 @@ export default function LoginPage() {
       });
       toast.success("Welcome back! Select your workspace.");
       router.push("/select-org");
-    } catch (error: any) {
-      toast.error(error.message || "Invalid credentials. Please try again.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Invalid credentials. Please try again.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

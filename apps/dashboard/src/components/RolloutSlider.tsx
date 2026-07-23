@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Loader2, Sliders, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Slider } from "@/components/ui/slider";
@@ -26,10 +26,6 @@ export function RolloutSlider({
   const [percentage, setPercentage] = useState(initialPercentage);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setPercentage(initialPercentage);
-  }, [initialPercentage]);
-
   const saveRollout = async (newVal: number) => {
     if (newVal === initialPercentage) return;
     setLoading(true);
@@ -39,8 +35,9 @@ export function RolloutSlider({
       });
       onRolloutSuccess(newVal);
       toast.success(`Rollout percentage updated to ${newVal}%.`);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update rollout percentage.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update rollout percentage.";
+      toast.error(message);
       setPercentage(initialPercentage); // Revert on failure
     } finally {
       setLoading(false);

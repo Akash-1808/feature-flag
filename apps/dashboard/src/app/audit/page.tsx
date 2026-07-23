@@ -1,14 +1,31 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { History, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api-client";
 import { AuditEntry } from "@/components/AuditEntry";
 
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  actor_id: string | null;
+  before_state?: Record<string, unknown>;
+  after_state?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+interface AuditApiResponse {
+  data: AuditLogEntry[];
+  pagination?: { hasMore: boolean };
+}
+
 export default function AuditLogPage() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -16,7 +33,7 @@ export default function AuditLogPage() {
   const [refreshing, setRefreshing] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  const fetchLogs = async (currentPage = 1, isRefresh = false) => {
+  const fetchLogs = useCallback(async (currentPage = 1, isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
     } else if (currentPage === 1) {
@@ -26,7 +43,7 @@ export default function AuditLogPage() {
     }
 
     try {
-      const response = await apiClient.get(`/api/audit?page=${currentPage}&limit=20`);
+      const response: AuditApiResponse = await apiClient.get(`/api/audit?page=${currentPage}&limit=20`);
       const newLogs = response.data || [];
       if (currentPage === 1 || isRefresh) {
         setLogs(newLogs);
@@ -34,23 +51,24 @@ export default function AuditLogPage() {
         // Append new items while deduplicating by ID just in case
         setLogs((prev) => {
           const existingIds = new Set(prev.map((item) => item.id));
-          const filteredNew = newLogs.filter((item: any) => !existingIds.has(item.id));
+          const filteredNew = newLogs.filter((item: AuditLogEntry) => !existingIds.has(item.id));
           return [...prev, ...filteredNew];
         });
       }
       setHasMore(response.pagination?.hasMore ?? false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load audit logs.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to load audit logs.";
+      toast.error(message);
     } finally {
       setLoading(false);
       setLoadingMore(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLogs(page);
-  }, [page]);
+  }, [page, fetchLogs]);
 
   // IntersectionObserver to automatically load the next page when scrolling near the bottom
   useEffect(() => {
