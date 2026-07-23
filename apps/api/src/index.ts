@@ -14,6 +14,7 @@ import sdkRouter from './routes/sdk.routes.js';
 import apiKeyRouter from './routes/api-key.routes.js';
 import auditRouter from './routes/audit.routes.js';
 import staleRouter from './routes/stale-flags.routes.js';
+import orgRouter from './routes/org.routes.js';
 import { authRateLimiter } from './middleware/rate-limiter.middleware.js';
 import { metricsWatcher } from './jobs/metrics-watcher.js';
 import { staleFlagDetector } from './jobs/stale-flag-detector.js';
@@ -34,6 +35,7 @@ app.use("/api/auth", authRateLimiter);
 // Body parsing for application API routes
 app.use(express.json());
 
+app.use('/api/organizations', orgRouter);
 app.use('/api/environments', environmentRouter);
 app.use('/api/flags', flagRouter);
 app.use('/api/api-keys', apiKeyRouter);

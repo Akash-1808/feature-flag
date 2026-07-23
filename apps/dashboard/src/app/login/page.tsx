@@ -30,8 +30,8 @@ export default function LoginPage() {
         email,
         password,
       });
-      toast.success("Welcome back! Redirecting...");
-      router.push("/flags");
+      toast.success("Welcome back! Select your workspace.");
+      router.push("/select-org");
     } catch (error: any) {
       toast.error(error.message || "Invalid credentials. Please try again.");
     } finally {
